@@ -1,0 +1,128 @@
+﻿@page "/reviews/create"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using ZooReviewDotComII.Data
+@using ZooReviewDotComII.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Create Review</PageTitle>
+
+<h1>Create Review</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <EditForm Model="Review" OnValidSubmit="AddReview">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+
+            <!-- Zoo Selection -->
+            <div class="mb-3">
+                <label for="zoo" class="form-label">Zoo:</label>
+                <InputSelect id="zoo" @bind-Value="Review.ZooId" class="form-control">
+                    <option value="">Select a Zoo</option>
+                    @foreach (var zoo in Zoos)
+                    {
+                    <option value="@zoo.ZooId">@zoo.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Review.ZooId" class="text-danger" />
+            </div>
+
+            <!-- Rating -->
+            <div>
+                <label for="rating">Rating</label>
+                <div>
+                    @foreach (var rating in AvailableRatings)
+                    {
+                    <button type="button" class="btn btn-link" @onclick="() => SetRating(rating)">
+                        @if (rating <= Review.Rating)
+                        {
+                        <span>★</span>  <!-- Filled star -->
+                        }
+                        else
+                        {
+                        <span>☆</span>  <!-- Empty star -->
+                        }
+                    </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="mb-3">
+                <label for="content" class="form-label">Content:</label>
+                <InputTextArea id="content" @bind-Value="Review.Content" class="form-control" />
+                <ValidationMessage For="() => Review.Content" class="text-danger" />
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/reviews">Back to List</a>
+</div>
+
+@code {
+private Review Review { get; set; } = new();
+private List<Zoo> Zoos { get; set; } = new();
+private List<double> AvailableRatings { get; set; } = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
+private string CurrentUsername { get; set; } = string.Empty;
+
+[SupplyParameterFromQuery]
+private Guid ZooId { get; set; }
+
+protected override async Task OnInitializedAsync()
+{
+    await using ApplicationDbContext context = await DbFactory.CreateDbContextAsync();
+    Zoos = await context.Zoos.ToListAsync(); // Fetch list of zoos for the dropdown
+    
+    if (ZooId != Guid.Empty)
+    {
+        // If a ZooId is passed in, set it to the Review's ZooId field
+        Review.ZooId = ZooId;
+    }
+
+    // Get the current user's info from AuthenticationStateProvider
+    var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+    var user = authState.User;
+    CurrentUsername = user?.Identity?.Name;  // Get the logged-in user's name
+}
+
+private void SetRating(double rating)
+{
+    Review.Rating = rating; // Set the rating based on user selection
+}
+
+private async Task AddReview()
+{
+    await using ApplicationDbContext context = await DbFactory.CreateDbContextAsync();
+
+    // Set DateReviewed to current UTC time
+    Review.DateReviewed = DateTime.UtcNow.AddHours(1);
+
+    // Set the UserId of the review to the current logged-in user's name (or ID if needed)
+    Review.Username = CurrentUsername;
+
+    // Add the review to the database
+    context.Reviews.Add(Review);
+    await context.SaveChangesAsync();
+
+    // Recalculate and update the zoo's average rating
+    Zoo? zoo = await context.Zoos.Include(z => z.Reviews).FirstOrDefaultAsync(z => z.ZooId == Review.ZooId);
+    if (zoo != null)
+    {
+        zoo.AvgRating = zoo.Reviews.Any() ? zoo.Reviews.Average(r => r.Rating) : 0;
+        context.Zoos.Update(zoo);
+        await context.SaveChangesAsync();
+    }
+
+    NavigationManager.NavigateTo("/reviews");
+}
+}

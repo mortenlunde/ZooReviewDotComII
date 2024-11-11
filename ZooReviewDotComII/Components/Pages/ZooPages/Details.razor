@@ -1,0 +1,120 @@
+﻿@page "/zoos/details"
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using ZooReviewDotComII.Models
+@using ZooReviewDotComII.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>Zoo</h2>
+    <hr />
+    @if (zoo is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">ID</dt>
+            <dt class="col-sm-10">@zoo.ZooId</dt>
+            <dt class="col-sm-2">Name</dt>
+            <dd class="col-sm-10">@zoo.Name</dd>
+            <dt class="col-sm-2">Town</dt>
+            <dd class="col-sm-10">@zoo.Town</dd>
+            <dt class="col-sm-2">AvgRating</dt>
+            <dd class="col-sm-10">@zoo.AvgRating</dd>
+        </dl>
+        <div>
+            <a href="@($"/zoos/edit?zooid={zoo.ZooId}")">Edit</a> |
+            <a href="@($"/zoos")">Back to List</a>
+        </div>
+        <br/>
+    }
+
+    <!-- Reviews Section -->
+    <h3>Reviews</h3>
+    @if (reviews != null && reviews.Any())
+    {
+        <ul class="list-group">
+            @foreach (var review in reviews)
+            {
+                <li class="list-group-item">
+                    <strong>@review.Rating</strong> Stars
+                    <p>
+                        @if (expandedReviews.Contains(review.ReviewId.ToString()))
+                        {
+                            <!-- Show the full content if expanded -->
+                            @((MarkupString)review.Content)
+                        }
+                        else
+                        {
+                            <!-- Truncate content to 300 characters if not expanded -->
+                            @((MarkupString)(review.Content.Length > 150 ? review.Content.Substring(0, 150) + "..." : review.Content)) 
+                        }
+                    </p>
+                    <footer class="blockquote-footer">@review.Username on @review.DateReviewed.ToShortDateString()</footer>
+
+                    @if (!expandedReviews.Contains(review.ReviewId.ToString()) && review.Content.Length > 150)
+                    {
+                        <button @onclick="() => ShowFullReview(review)" class="btn btn-link btn-sm">Expand</button>
+                    }
+                    @if (expandedReviews.Contains(review.ReviewId.ToString()) && review.Content.Length > 150)
+                    {
+                        <button @onclick="() => ShowFullReview(review)" class="btn btn-link btn-sm">Collapse</button>
+                    }
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No reviews available for this zoo.</p>
+    }
+</div>
+
+@code {
+    private Zoo? zoo;
+    private List<Review> reviews = new();
+
+    // Keep track of expanded reviews by their ReviewId
+    private HashSet<string> expandedReviews = new();
+
+    [SupplyParameterFromQuery]
+    private Guid ZooId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        zoo = await context.Zoos.FirstOrDefaultAsync(m => m.ZooId == ZooId);
+
+        if (zoo is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+        
+        reviews = await context.Reviews
+            .Where(r => r.ZooId == ZooId)
+            .OrderByDescending(r => r.DateReviewed) // Optional: Sort by review date (latest first)
+            .ToListAsync();
+    }
+
+    // Toggles the expanded state of the review
+    private void ShowFullReview(Review review)
+    {
+        if (expandedReviews.Contains(review.ReviewId.ToString()))
+        {
+            // If already expanded, collapse it
+            expandedReviews.Remove(review.ReviewId.ToString());
+        }
+        else
+        {
+            // Otherwise, expand it
+            expandedReviews.Add(review.ReviewId.ToString());
+        }
+    }
+}

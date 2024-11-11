@@ -1,0 +1,50 @@
+﻿@page "/zoos"
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@using ZooReviewDotComII.Data
+@using ZooReviewDotComII.Models
+@implements IAsyncDisposable
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<PageTitle>Index</PageTitle>
+
+<h1>Index</h1>
+
+<p>
+    <a href="zoos/create">Create New</a>
+</p>
+
+<QuickGrid Class="table" Items="context.Zoos">
+    <PropertyColumn Property="zoo => zoo.Name" />
+    <PropertyColumn Property="zoo => zoo.Town" />
+    <PropertyColumn Property="zoo => zoo.AvgRating" />
+
+    <TemplateColumn Context="zoo">
+        <a href="@($"reviews/create?zooId={zoo.ZooId}")">Create a review</a> |
+        <a href="@($"zoos/edit?zooid={zoo.ZooId}")">Edit</a> |
+        <a href="@($"zoos/details?zooid={zoo.ZooId}")">Details</a> |
+        <a href="@($"zoos/delete?zooid={zoo.ZooId}")">Delete</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+private ApplicationDbContext context = default!;
+private List<Zoo> Zoos { get; set; } = new();
+
+protected override void OnInitialized()
+{
+context = DbFactory.CreateDbContext();
+
+}
+
+private async Task LoadDataAsync()
+{
+using var dbContext = await DbFactory.CreateDbContextAsync();
+// Use dbContext to load data as needed
+}
+
+
+public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

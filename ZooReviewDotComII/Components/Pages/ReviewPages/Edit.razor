@@ -1,0 +1,103 @@
+﻿@page "/reviews/edit"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using ZooReviewDotComII.Models
+@using ZooReviewDotComII.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit Review</PageTitle>
+
+<h1>Edit Review</h1>
+
+@if (Review is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm Model="Review" OnValidSubmit="UpdateReview">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <!-- Rating -->
+                <div class="mb-3">
+                    <label for="rating" class="form-label">Rating:</label>
+                    <InputNumber id="rating" @bind-Value="Review.Rating" class="form-control" />
+                    <ValidationMessage For="() => Review.Rating" class="text-danger" />
+                </div>
+
+                <!-- Content -->
+                <div class="mb-3">
+                    <label for="content" class="form-label">Content:</label>
+                    <InputText id="content" @bind-Value="Review.Content" class="form-control" />
+                    <ValidationMessage For="() => Review.Content" class="text-danger" />
+                </div>
+
+                <!-- Date Reviewed -->
+                <div class="mb-3">
+                    <label for="datereviewed" class="form-label">Date Reviewed:</label>
+                    <InputDate id="datereviewed" @bind-Value="Review.DateReviewed" class="form-control" />
+                    <ValidationMessage For="() => Review.DateReviewed" class="text-danger" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/reviews">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private Guid ReviewId { get; set; }
+
+    private Review? Review { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Review = await context.Reviews.FirstOrDefaultAsync(m => m.ReviewId == ReviewId);
+
+        if (Review is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task UpdateReview()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Review!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ReviewExists(Review!.ReviewId))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/reviews");
+    }
+
+    private bool ReviewExists(Guid reviewid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Reviews.Any(e => e.ReviewId == reviewid);
+    }
+}
