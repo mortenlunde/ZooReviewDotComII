@@ -1,6 +1,12 @@
 ﻿@page "/Account/Manage/PersonalData"
-
-@inject IdentityUserAccessor UserAccessor
+@using ZooReviewDotComII.Models
+@using ZooReviewDotComII.Data
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+@inject UserManager<ApplicationUser> UserManager
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Personal Data</PageTitle>
 
@@ -16,19 +22,114 @@
         <form action="Account/Manage/DownloadPersonalData" method="post">
             <AntiforgeryToken />
             <button class="btn btn-primary" type="submit">Download</button>
-        </form>
-        <p>
             <a href="Account/Manage/DeletePersonalData" class="btn btn-danger">Delete</a>
-        </p>
+        </form>
     </div>
 </div>
+<br/>
+<h3>Your Reviews</h3>
+
+@if (reviews == null)
+{
+<p><em>Loading reviews...</em></p>
+}
+else if (!reviews.Any())
+{
+<p><em>You haven't posted any reviews yet.</em></p>
+}
+else
+{
+<table class="table">
+    <thead>
+    <tr>
+        <th>Zoo Name</th>
+        <th>Rating</th>
+        <th>Review</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var review in reviews.Skip((currentPage - 1) * pageSize).Take(pageSize))
+    {
+    <tr>
+        <td>@(review.ZooName ?? "Unknown")</td>
+        <td>@review.Rating</td>
+        <td>@review.Content</td>
+        <td>
+            <a href="/reviews/edit?reviewid=@review.ReviewId">Edit</a> |
+            <a href="/reviews/delete?reviewid=@review.ReviewId">Delete</a>
+        </td>
+    </tr>
+    }
+    </tbody>
+</table>
+
+<div class="mb-3">
+    <button class="btn btn-primary mx-2" @onclick="GoToPreviousPage" disabled="@(!CanGoToPreviousPage)">
+        <i class="bi bi-arrow-left-circle"></i> Previous
+    </button>
+    <span class="align-self-center">Page @currentPage of @TotalPages</span>
+    <button class="btn btn-primary mx-2" @onclick="GoToNextPage" disabled="@(!CanGoToNextPage)">
+        Next <i class="bi bi-arrow-right-circle"></i>
+    </button>
+</div>
+}
 
 @code {
-    [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
+    private string userName = string.Empty;
+    private List<Review> reviews = new List<Review>();
+    private int currentPage = 1;
+    private int pageSize = 5;
+    private int TotalPages => (int)Math.Ceiling((double)reviews.Count / pageSize);
 
     protected override async Task OnInitializedAsync()
     {
-        _ = await UserAccessor.GetRequiredUserAsync(HttpContext);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            if (appUser != null)
+            {
+                userName = appUser.UserName;
+
+                using var context = DbFactory.CreateDbContext();
+                reviews = await context.Reviews
+                    .Include(r => r.Zoo)  // Ensure we load the Zoo related data if available
+                    .Where(r => r.Username == appUser.UserName)
+                    .ToListAsync();
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/login");
+        }
     }
+
+    // Go to the previous page
+    private async Task GoToPreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            StateHasChanged();
+        }
+    }
+
+    // Go to the next page
+    private async Task GoToNextPage()
+    {
+        if (currentPage < TotalPages)
+        {
+            currentPage++;
+            StateHasChanged();;
+        }
+    }
+    
+    // Check if we can go to the previous page
+    private bool CanGoToPreviousPage => currentPage > 1;
+
+    // Check if we can go to the next page
+    private bool CanGoToNextPage => currentPage < TotalPages;
 }

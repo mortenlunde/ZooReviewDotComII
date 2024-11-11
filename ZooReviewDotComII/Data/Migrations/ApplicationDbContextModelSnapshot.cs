@@ -234,8 +234,9 @@ namespace ZooReviewDotComII.Migrations
                     b.Property<double>("Rating")
                         .HasColumnType("double");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("char(36)");
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<Guid>("ZooId")
                         .HasColumnType("char(36)");
