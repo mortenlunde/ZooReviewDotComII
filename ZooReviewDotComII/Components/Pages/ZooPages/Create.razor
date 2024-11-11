@@ -1,4 +1,6 @@
 ﻿@page "/zoos/create"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using ZooReviewDotComII.Models
 @using ZooReviewDotComII.Data
@@ -39,7 +41,6 @@
     [SupplyParameterFromForm]
     private Zoo Zoo { get; set; } = new();
 
-    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddZoo()
     {
         using var context = DbFactory.CreateDbContext();

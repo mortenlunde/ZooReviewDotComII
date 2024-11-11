@@ -2,49 +2,79 @@
 @attribute [AllowAnonymous]
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using ZooReviewDotComII.Data
 @using ZooReviewDotComII.Models
 @implements IAsyncDisposable
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> Usermanager
 
 <PageTitle>Index</PageTitle>
 
 <h1>Index</h1>
 
 <p>
-    <a href="zoos/create">Create New</a>
+    @if (isAdmin)
+    {
+        <a href="zoos/create">Create New</a>
+    }
 </p>
 
 <QuickGrid Class="table" Items="context.Zoos">
-    <PropertyColumn Property="zoo => zoo.Name" />
-    <PropertyColumn Property="zoo => zoo.Town" />
-    <PropertyColumn Property="zoo => zoo.AvgRating" />
+    <PropertyColumn Property="zoo => zoo.Name" Sortable="true" />
+    <PropertyColumn Property="zoo => zoo.Town" Sortable="true" />
+    <PropertyColumn Property="zoo => zoo.AvgRating" Sortable="true" />
 
     <TemplateColumn Context="zoo">
         <a href="@($"reviews/create?zooId={zoo.ZooId}")">Create a review</a> |
-        <a href="@($"zoos/edit?zooid={zoo.ZooId}")">Edit</a> |
-        <a href="@($"zoos/details?zooid={zoo.ZooId}")">Details</a> |
-        <a href="@($"zoos/delete?zooid={zoo.ZooId}")">Delete</a>
+        <a href="@($"zoos/details?zooid={zoo.ZooId}")"> Visit</a>
+        @if (isAdmin)
+        {
+            <text> | </text>
+            <a href="@($"zoos/edit?zooid={zoo.ZooId}")">Edit</a>
+            <text> | </text>
+            <a href="@($"zoos/delete?zooid={zoo.ZooId}")">Delete</a>
+        }
     </TemplateColumn>
 </QuickGrid>
 
 @code {
 private ApplicationDbContext context = default!;
-private List<Zoo> Zoos { get; set; } = new();
+private IQueryable<Review> _reviewsQuery = default!;
+private bool isAdmin = false;
 
-protected override void OnInitialized()
+protected override async Task OnInitializedAsync()
 {
-context = DbFactory.CreateDbContext();
+    context = DbFactory.CreateDbContext();
+    await CheckIfUserIsAdminAsync();
+}
 
+private async Task CheckIfUserIsAdminAsync()
+{
+    var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+    var user = authState.User;
+    if (user.Identity?.IsAuthenticated ?? false)
+    {
+        var appUser = await Usermanager.GetUserAsync(user);
+        if (appUser != null)
+        {
+            isAdmin = await Usermanager.IsInRoleAsync(appUser, "Admin");
+        }
+    }
 }
 
 private async Task LoadDataAsync()
 {
 using var dbContext = await DbFactory.CreateDbContextAsync();
-// Use dbContext to load data as needed
 }
 
-
-public async ValueTask DisposeAsync() => await context.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (context is not null)
+        {
+            await context.DisposeAsync();
+        }
+    }
 }
