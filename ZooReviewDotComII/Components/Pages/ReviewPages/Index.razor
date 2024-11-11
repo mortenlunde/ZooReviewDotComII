@@ -11,7 +11,7 @@
 <PageTitle>Index</PageTitle>
 
 <h1>Reviews</h1>
-
+<br/>
 <div>
     <label for="pageSize">Reviews per page: </label>
     <select id="pageSize" @onchange="OnPageSizeChanged" value="@_pageSize">
@@ -19,10 +19,7 @@
         <option value="25">25</option>
         <option value="50">50</option>
     </select>
-</div>
-
-<!-- Single Sorting Dropdown (Sort By Column and Order) -->
-<div class="sorting-dropdown">
+    <text> | </text>
     <label for="sortBy">Sort By: </label>
     <select id="sortBy" @onchange="OnSortChanged">
         <option value="DateReviewed-true" selected>Date Reviewed (Ascending)</option>
@@ -35,12 +32,12 @@
         <option value="Rating-false">Rating (Descending)</option>
     </select>
 </div>
-
+<br/>
 <QuickGrid Class="table" Items="_reviewsQuery">
     <PropertyColumn Property="review => review.ZooName" />
     <PropertyColumn Property="review => review.Username" />
     <PropertyColumn Property="review => review.Rating" />
-    <PropertyColumn Property="review => Truncate(review.Content, 100)" />  <!-- Truncate content to 100 characters -->
+    <PropertyColumn Property="review => Truncate(review.Content, 100)" Title="Comment"/>  <!-- Truncate content to 100 characters -->
     <PropertyColumn Property="review => review.DateReviewed" />
     <TemplateColumn Context="review">
         <a href="@($"reviews/details?reviewid={review.ReviewId}")">Details</a>

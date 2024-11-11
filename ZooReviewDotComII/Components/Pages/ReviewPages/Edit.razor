@@ -1,11 +1,14 @@
 ﻿@page "/reviews/edit"
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using ZooReviewDotComII.Models
 @using ZooReviewDotComII.Data
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>Edit Review</PageTitle>
 
@@ -32,16 +35,9 @@ else
 
                 <!-- Content -->
                 <div class="mb-3">
-                    <label for="content" class="form-label">Content:</label>
-                    <InputText id="content" @bind-Value="Review.Content" class="form-control" />
+                    <label for="content" class="form-label">Comment:</label>
+                    <InputTextArea id="content" @bind-Value="Review.Content" class="form-control" />
                     <ValidationMessage For="() => Review.Content" class="text-danger" />
-                </div>
-
-                <!-- Date Reviewed -->
-                <div class="mb-3">
-                    <label for="datereviewed" class="form-label">Date Reviewed:</label>
-                    <InputDate id="datereviewed" @bind-Value="Review.DateReviewed" class="form-control" />
-                    <ValidationMessage For="() => Review.DateReviewed" class="text-danger" />
                 </div>
 
                 <button type="submit" class="btn btn-primary">Save</button>
@@ -59,15 +55,42 @@ else
     private Guid ReviewId { get; set; }
 
     private Review? Review { get; set; }
+    private bool isCurrentUserReview = false;
 
     protected override async Task OnInitializedAsync()
     {
+        // Fetch the review from the database
         using var context = DbFactory.CreateDbContext();
         Review = await context.Reviews.FirstOrDefaultAsync(m => m.ReviewId == ReviewId);
 
         if (Review is null)
         {
-            NavigationManager.NavigateTo("notfound");
+            NavigationManager.NavigateTo("/error");
+            return;
+        }
+
+        await CheckUserPermissions();
+    }
+
+    private async Task CheckUserPermissions()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            if (appUser != null)
+            {
+                // Check if the logged-in user is the same as the one who created the review
+                isCurrentUserReview = Review.Username == appUser.UserName;
+
+                if (!isCurrentUserReview)
+                {
+                    // If the logged-in user is not the one who created the review, redirect to "notfound"
+                    NavigationManager.NavigateTo("Account/InvalidUser");
+                }
+            }
         }
     }
 
@@ -84,7 +107,7 @@ else
         {
             if (!ReviewExists(Review!.ReviewId))
             {
-                NavigationManager.NavigateTo("notfound");
+                NavigationManager.NavigateTo("/error");
             }
             else
             {

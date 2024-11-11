@@ -49,3 +49,31 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+.readme-content {
+    background-color: #f7f7f7;
+    padding: 20px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    max-width: 800px;
+    overflow-x: auto;
+}
+
+.readme-content h1, .readme-content h2, .readme-content h3 {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+}
+
+.readme-content pre {
+    background-color: #2d2d2d;
+    color: #f8f8f2;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.readme-content code {
+    background-color: #f1f1f1;
+    padding: 2px 5px;
+    border-radius: 4px;
+}

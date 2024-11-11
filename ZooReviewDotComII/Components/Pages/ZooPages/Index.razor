@@ -6,7 +6,6 @@
 @using Microsoft.EntityFrameworkCore
 @using ZooReviewDotComII.Data
 @using ZooReviewDotComII.Models
-@implements IAsyncDisposable
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject UserManager<ApplicationUser> Usermanager
@@ -41,40 +40,27 @@
 </QuickGrid>
 
 @code {
-private ApplicationDbContext context = default!;
-private IQueryable<Review> _reviewsQuery = default!;
-private bool isAdmin = false;
+    private ApplicationDbContext context = default!;
+    private IQueryable<Review> _reviewsQuery = default!;
+    private bool isAdmin = false;
 
-protected override async Task OnInitializedAsync()
-{
-    context = DbFactory.CreateDbContext();
-    await CheckIfUserIsAdminAsync();
-}
-
-private async Task CheckIfUserIsAdminAsync()
-{
-    var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-    var user = authState.User;
-    if (user.Identity?.IsAuthenticated ?? false)
+    protected override async Task OnInitializedAsync()
     {
-        var appUser = await Usermanager.GetUserAsync(user);
-        if (appUser != null)
-        {
-            isAdmin = await Usermanager.IsInRoleAsync(appUser, "Admin");
-        }
+        context = DbFactory.CreateDbContext();
+        await CheckIfUserIsAdminAsync();
     }
-}
 
-private async Task LoadDataAsync()
-{
-using var dbContext = await DbFactory.CreateDbContextAsync();
-}
-
-    public async ValueTask DisposeAsync()
+    private async Task CheckIfUserIsAdminAsync()
     {
-        if (context is not null)
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated ?? false)
         {
-            await context.DisposeAsync();
+            var appUser = await Usermanager.GetUserAsync(user);
+            if (appUser != null)
+            {
+                isAdmin = await Usermanager.IsInRoleAsync(appUser, "Admin");
+            }
         }
     }
 }

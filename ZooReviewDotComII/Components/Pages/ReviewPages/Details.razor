@@ -1,9 +1,12 @@
 ﻿@page "/reviews/details"
+@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using ZooReviewDotComII.Models
 @using ZooReviewDotComII.Data
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>Details</PageTitle>
 
@@ -16,7 +19,8 @@
     {
     <p><em>Loading...</em></p>
     }
-    else {
+    else
+    {
     <dl class="row">
         <dt class="col-sm-2">UserId</dt>
         <dd class="col-sm-10">@review.Username</dd>
@@ -27,15 +31,30 @@
         <dt class="col-sm-2">DateReviewed</dt>
         <dd class="col-sm-10">@review.DateReviewed</dd>
     </dl>
+
     <div>
-        <a href="@($"/reviews/edit?reviewid={review.ReviewId}")">Edit</a> |
-        <a href="@($"/reviews")">Back to List</a>
+        <!-- Edit Button (Only for the User who created the review) -->
+        @if (isCurrentUserReview)
+        {
+        <a href="@($"/reviews/edit?reviewid={review.ReviewId}")" class="btn btn-success mx-2">Edit</a>
+        }
+
+        <!-- Delete Button (Only for Admin users) -->
+        @if (isAdmin || isCurrentUserReview)
+        {
+        <a href="@($"/reviews/delete?reviewid={review.ReviewId}")" class="btn btn-danger mx-2">Delete</a>
+        }
+
+        <!-- Back to List Button -->
+        <a href="@($"/reviews")" class="btn btn-primary mx-2">Back to List</a>
     </div>
     }
 </div>
 
 @code {
 private Review? review;
+private bool isCurrentUserReview = false;
+private bool isAdmin = false;
 
 [SupplyParameterFromQuery]
 private Guid ReviewId { get; set; }
@@ -48,6 +67,28 @@ review = await context.Reviews.FirstOrDefaultAsync(m => m.ReviewId == ReviewId);
 if (review is null)
 {
 NavigationManager.NavigateTo("notfound");
+return;
+}
+
+await CheckUserPermissions();
+}
+
+private async Task CheckUserPermissions()
+{
+var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+var user = authState.User;
+
+if (user.Identity?.IsAuthenticated ?? false)
+{
+var appUser = await UserManager.GetUserAsync(user);
+if (appUser != null)
+{
+// Check if the logged-in user is the one who created the review
+isCurrentUserReview = review.Username == appUser.UserName;
+
+// Check if the user is an Admin
+isAdmin = await UserManager.IsInRoleAsync(appUser, "Admin");
+}
 }
 }
 }
