@@ -1,7 +1,6 @@
 ﻿@page "/zoos"
 @attribute [AllowAnonymous]
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.QuickGrid
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using ZooReviewDotComII.Data
@@ -12,42 +11,72 @@
 
 <PageTitle>Index</PageTitle>
 
-<h1>Index</h1>
+<h1>Zoos</h1>
 
 <p>
     @if (isAdmin)
     {
-        <a href="zoos/create">Create New</a>
+        <Button Type="ButtonType.Link" Color="ButtonColor.Success" To="zoos/create"> Create new </Button>
     }
 </p>
 
-<QuickGrid Class="table" Items="context.Zoos">
-    <PropertyColumn Property="zoo => zoo.Name" Sortable="true" />
-    <PropertyColumn Property="zoo => zoo.Town" Sortable="true" />
-    <PropertyColumn Property="zoo => zoo.AvgRating" Sortable="true" />
-
-    <TemplateColumn Context="zoo">
-        <a href="@($"reviews/create?zooId={zoo.ZooId}")">Create a review</a> |
-        <a href="@($"zoos/details?zooid={zoo.ZooId}")"> Visit</a>
-        @if (isAdmin)
+@if (zoos == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+        @foreach (var zoo in zoos)
         {
-            <text> | </text>
-            <a href="@($"zoos/edit?zooid={zoo.ZooId}")">Edit</a>
-            <text> | </text>
-            <a href="@($"zoos/delete?zooid={zoo.ZooId}")">Delete</a>
+            <div class="col">
+                <Card Class="mb-4 h-100" Style="width: 100%;">
+                    @if (zoo.Image != null && zoo.Image.Length > 0)
+                    {
+                    <img style="max-height: 200px; max-width: 100%;" src="data:image/jpeg;base64,@Convert.ToBase64String(zoo.Image)" alt="Zoo Image" class="img-fluid" />
+                    }
+                    else
+                    {
+                    <Image style="max-height: 200px; max-width: 100%;" Src="/images/placeholder.png" IsThumbnail="true" Alt="placeholder" />
+                    }
+                    <CardBody>
+                        <CardTitle>@zoo.Name</CardTitle>
+                        <CardText>@zoo.Town</CardText>
+                        <CardText>Average Rating: @GetRatingStars(zoo.AvgRating)</CardText>
+
+                    </CardBody>
+                    <CardFooter>
+                        <a href="@($"reviews/create?zooId={zoo.ZooId}")">Create a review</a> |
+                        <a href="@($"zoos/details?zooid={zoo.ZooId}")">Visit</a>
+                        @if (isAdmin)
+                        {
+                            <text> | </text>
+                            <a href="@($"zoos/edit?zooid={zoo.ZooId}")">Edit</a>
+                            <text> | </text>
+                            <a href="@($"zoos/delete?zooid={zoo.ZooId}")">Delete</a>
+                        }
+                    </CardFooter>
+                </Card>
+            </div>
         }
-    </TemplateColumn>
-</QuickGrid>
+    </div>
+}
 
 @code {
     private ApplicationDbContext context = default!;
-    private IQueryable<Review> _reviewsQuery = default!;
+    private List<Zoo> zoos = new();
     private bool isAdmin = false;
 
     protected override async Task OnInitializedAsync()
     {
         context = DbFactory.CreateDbContext();
         await CheckIfUserIsAdminAsync();
+        await LoadZoosAsync();
+    }
+
+    private async Task LoadZoosAsync()
+    {
+        zoos = await context.Zoos.ToListAsync();
     }
 
     private async Task CheckIfUserIsAdminAsync()
@@ -62,5 +91,18 @@
                 isAdmin = await Usermanager.IsInRoleAsync(appUser, "Admin");
             }
         }
+    }
+
+    private string GetRatingStars(double avgRating)
+    {
+        int fullStars = (int)avgRating; // Number of full stars
+        bool hasHalfStar = (avgRating - fullStars) >= 0.5; // Check if there's a half star
+        int totalStars = 5; // Total number of stars to display
+
+        string stars = new string('⭐', fullStars); // Full stars
+        if (hasHalfStar) stars += "⭐️"; // Add half star if necessary
+        stars = stars.PadRight(totalStars, '☆'); // Fill with empty stars if necessary
+
+        return stars;
     }
 }

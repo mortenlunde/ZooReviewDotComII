@@ -27,7 +27,12 @@
                 <label for="town" class="form-label">Town:</label> 
                 <InputText id="town" @bind-Value="Zoo.Town" class="form-control" /> 
                 <ValidationMessage For="() => Zoo.Town" class="text-danger" /> 
-            </div>        
+            </div>
+            <div class="mb-3">
+                <label for="image" class="form-label">Upload Picture:</label>
+                <InputFile id="image" OnChange="OnInputFileChange" />
+                <ValidationMessage For="() => Zoo.Image" class="text-danger" />
+            </div>
             <button type="submit" class="btn btn-primary">Create</button>
         </EditForm>
     </div>
@@ -40,10 +45,24 @@
 @code {
     [SupplyParameterFromForm]
     private Zoo Zoo { get; set; } = new();
+    
+    private byte[]? uploadedImageData;
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream().CopyToAsync(memoryStream);
+            uploadedImageData = memoryStream.ToArray();
+        }
+    }
 
     private async Task AddZoo()
     {
         using var context = DbFactory.CreateDbContext();
+        Zoo.Image = uploadedImageData;
         context.Zoos.Add(Zoo);
         await context.SaveChangesAsync();
         NavigationManager.NavigateTo("/zoos");

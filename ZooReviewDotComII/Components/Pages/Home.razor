@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using Markdig
+@using Markdown = Markdig.Markdown
 @inject IWebHostEnvironment Env
 
 <PageTitle>Welcome</PageTitle>
@@ -16,11 +17,30 @@
 
 <br/>
 <strong>Get started:</strong>
-<ul>
-    <li><a href="/reviews/create">Create a new review</a></li>
-    <li><a href="/reviews">Browse Reviews</a></li>
-    <li><a href="/zoos">Browse Zoos</a></li>
-</ul>
+<CardGroup Style="width: fit-content">
+    <Card Class="mb-4" Style="width:10rem;">
+        <CardBody>
+            <CardTitle>Create a new review</CardTitle>
+            <CardText>Give some feedback from your last visit to a zoo.</CardText>
+            <Button Color="ButtonColor.Primary" To="/reviews/create" Type="ButtonType.Link">Create Review</Button>
+        </CardBody>
+    </Card>
+    <Card Class="mb-4" Style="width:10rem;">
+        <CardBody>
+            <CardTitle>Browse Reviews</CardTitle>
+            <CardText>Read reviws from users all around the world.</CardText>
+            <Button Color="ButtonColor.Primary" To="/reviews" Type="ButtonType.Link">Browse Reviews</Button>
+        </CardBody>
+    </Card>
+    <Card Class="mb-4" Style="width:10rem;">
+        <CardBody>
+            <CardTitle>Browse Zoo's</CardTitle>
+            <CardText>Watch all our selection of zoo's in Norway.</CardText>
+            <Button Color="ButtonColor.Primary" To="/zoos" Type="ButtonType.Link">Browse Zoo's</Button>
+        </CardBody>
+    </Card>
+</CardGroup>
+
 <br/>
 <p>Enjoy your stay!</p>
 <br/>
@@ -35,6 +55,8 @@
         @((MarkupString)_markdownContent) <!-- Render Markdown content as HTML -->
     </div>
 </div>
+<text></text>
+<br/><br/>
 
 @code {
     private string _markdownContent = "";
@@ -69,6 +91,9 @@
 
 <style>
     .code-block {
+        height: min(400px);
+        width: max(800px);
+        
         border: 1px solid #ddd;
         border-radius: 6px;
         overflow: hidden;

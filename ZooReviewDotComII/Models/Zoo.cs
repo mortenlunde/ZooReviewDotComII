@@ -14,6 +14,7 @@ namespace ZooReviewDotComII.Models
         public string Town { get; set; } = string.Empty;
 
         public double AvgRating { get; set; }
+        public byte[]? Image { get; set; }
 
         public virtual List<Review> Reviews { get; set; } = new();
         public double CalculateAvgRating() => Reviews.Any() ? Reviews.Average(r => r.Rating) : 0;

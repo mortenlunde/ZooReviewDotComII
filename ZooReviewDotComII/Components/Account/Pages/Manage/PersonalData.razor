@@ -1,4 +1,5 @@
 ﻿@page "/Account/Manage/PersonalData"
+@using System.Runtime.CompilerServices
 @using ZooReviewDotComII.Models
 @using ZooReviewDotComII.Data
 @using Microsoft.AspNetCore.Identity
@@ -29,11 +30,11 @@
 <br/>
 <h3>Your Reviews</h3>
 
-@if (reviews == null)
+@if (_reviews == null)
 {
 <p><em>Loading reviews...</em></p>
 }
-else if (!reviews.Any())
+else if (!_reviews.Any())
 {
 <p><em>You haven't posted any reviews yet.</em></p>
 }
@@ -49,7 +50,7 @@ else
     </tr>
     </thead>
     <tbody>
-    @foreach (var review in reviews.Skip((currentPage - 1) * pageSize).Take(pageSize))
+    @foreach (var review in _reviews.Skip((_currentPage - 1) * _pageSize).Take(_pageSize))
     {
     <tr>
         <td>@(review.ZooName ?? "Unknown")</td>
@@ -68,7 +69,7 @@ else
     <button class="btn btn-primary mx-2" @onclick="GoToPreviousPage" disabled="@(!CanGoToPreviousPage)">
         <i class="bi bi-arrow-left-circle"></i> Previous
     </button>
-    <span class="align-self-center">Page @currentPage of @TotalPages</span>
+    <span class="align-self-center">Page @_currentPage of @TotalPages</span>
     <button class="btn btn-primary mx-2" @onclick="GoToNextPage" disabled="@(!CanGoToNextPage)">
         Next <i class="bi bi-arrow-right-circle"></i>
     </button>
@@ -76,11 +77,11 @@ else
 }
 
 @code {
-    private string userName = string.Empty;
-    private List<Review> reviews = new List<Review>();
-    private int currentPage = 1;
-    private int pageSize = 5;
-    private int TotalPages => (int)Math.Ceiling((double)reviews.Count / pageSize);
+    private string _userName = string.Empty;
+    private List<Review> _reviews = [];
+    private int _currentPage = 1;
+    private int _pageSize = 5;
+    private int TotalPages => (int)Math.Ceiling((double)_reviews.Count / _pageSize);
 
     protected override async Task OnInitializedAsync()
     {
@@ -92,10 +93,11 @@ else
             var appUser = await UserManager.GetUserAsync(user);
             if (appUser != null)
             {
-                userName = appUser.UserName;
+                _userName = appUser.UserName!;
 
-                using var context = DbFactory.CreateDbContext();
-                reviews = await context.Reviews
+                ApplicationDbContext context = await DbFactory.CreateDbContextAsync();
+                await using ConfiguredAsyncDisposable context1 = context.ConfigureAwait(false);
+                _reviews = await context.Reviews
                     .Include(r => r.Zoo)  // Ensure we load the Zoo related data if available
                     .Where(r => r.Username == appUser.UserName)
                     .ToListAsync();
@@ -108,28 +110,28 @@ else
     }
 
     // Go to the previous page
-    private async Task GoToPreviousPage()
+    private Task GoToPreviousPage()
     {
-        if (currentPage > 1)
-        {
-            currentPage--;
-            StateHasChanged();
-        }
+        if (_currentPage <= 1) return Task.CompletedTask;
+        _currentPage--;
+        StateHasChanged();
+
+        return Task.CompletedTask;
     }
 
     // Go to the next page
-    private async Task GoToNextPage()
+    private Task GoToNextPage()
     {
-        if (currentPage < TotalPages)
-        {
-            currentPage++;
-            StateHasChanged();;
-        }
+        if (_currentPage >= TotalPages) return Task.CompletedTask;
+        _currentPage++;
+        StateHasChanged();
+
+        return Task.CompletedTask;
     }
     
     // Check if we can go to the previous page
-    private bool CanGoToPreviousPage => currentPage > 1;
+    private bool CanGoToPreviousPage => _currentPage > 1;
 
     // Check if we can go to the next page
-    private bool CanGoToNextPage => currentPage < TotalPages;
+    private bool CanGoToNextPage => _currentPage < TotalPages;
 }
