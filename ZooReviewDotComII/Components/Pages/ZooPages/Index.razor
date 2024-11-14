@@ -1,5 +1,6 @@
 ﻿@page "/zoos"
 @attribute [AllowAnonymous]
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
@@ -14,20 +15,20 @@
 <h1>Zoos</h1>
 
 <p>
-    @if (isAdmin)
+    @if (_isAdmin)
     {
         <Button Type="ButtonType.Link" Color="ButtonColor.Success" To="zoos/create"> Create new </Button>
     }
 </p>
 
-@if (zoos == null)
+@if (_zoos == null)
 {
     <p><em>Loading...</em></p>
 }
 else
 {
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-        @foreach (var zoo in zoos)
+        @foreach (var zoo in _zoos)
         {
             <div class="col">
                 <Card Class="mb-4 h-100" Style="width: 100%;">
@@ -48,7 +49,7 @@ else
                     <CardFooter>
                         <a href="@($"reviews/create?zooId={zoo.ZooId}")">Create a review</a> |
                         <a href="@($"zoos/details?zooid={zoo.ZooId}")">Visit</a>
-                        @if (isAdmin)
+                        @if (_isAdmin)
                         {
                             <text> | </text>
                             <a href="@($"zoos/edit?zooid={zoo.ZooId}")">Edit</a>
@@ -63,45 +64,45 @@ else
 }
 
 @code {
-    private ApplicationDbContext context = default!;
-    private List<Zoo> zoos = new();
-    private bool isAdmin = false;
+    private ApplicationDbContext _context = default!;
+    private List<Zoo> _zoos = [];
+    private bool _isAdmin;
 
     protected override async Task OnInitializedAsync()
     {
-        context = DbFactory.CreateDbContext();
+        _context = await DbFactory.CreateDbContextAsync();
         await CheckIfUserIsAdminAsync();
         await LoadZoosAsync();
     }
 
     private async Task LoadZoosAsync()
     {
-        zoos = await context.Zoos.ToListAsync();
+        _zoos = await _context.Zoos.ToListAsync();
     }
 
     private async Task CheckIfUserIsAdminAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        AuthenticationState authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        ClaimsPrincipal user = authState.User;
         if (user.Identity?.IsAuthenticated ?? false)
         {
             var appUser = await Usermanager.GetUserAsync(user);
             if (appUser != null)
             {
-                isAdmin = await Usermanager.IsInRoleAsync(appUser, "Admin");
+                _isAdmin = await Usermanager.IsInRoleAsync(appUser, "Admin");
             }
         }
     }
 
-    private string GetRatingStars(double avgRating)
+    private static string GetRatingStars(double avgRating)
     {
-        int fullStars = (int)avgRating; // Number of full stars
-        bool hasHalfStar = (avgRating - fullStars) >= 0.5; // Check if there's a half star
-        int totalStars = 5; // Total number of stars to display
+        int fullStars = (int)avgRating;
+        bool hasHalfStar = (avgRating - fullStars) >= 0.5;
+        const int totalStars = 5;
 
-        string stars = new string('⭐', fullStars); // Full stars
-        if (hasHalfStar) stars += "⭐️"; // Add half star if necessary
-        stars = stars.PadRight(totalStars, '☆'); // Fill with empty stars if necessary
+        string stars = new string('⭐', fullStars);
+        if (hasHalfStar) stars += "⭐️";
+        stars = stars.PadRight(totalStars, '☆');
 
         return stars;
     }

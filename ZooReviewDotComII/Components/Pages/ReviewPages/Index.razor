@@ -1,5 +1,6 @@
 ﻿@page "/reviews"
 @attribute [AllowAnonymous]
+@using System.Linq.Dynamic.Core
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using ZooReviewDotComII.Models
@@ -15,19 +16,19 @@
       AllowPaging="true"
       AllowSorting="true"
       Responsive="true"
-      Style="background: rgba(255,255,255,0.5)">
+      Style="background: rgba(255,255,255,0.5);">
 
-    <GridColumn TItem="Review" HeaderText="Zoo Name" PropertyName="ZooName" SortString="ZooName" SortKeySelector="item => item.ZooName" FilterTextboxWidth="100">
-        <a href="/zoos/details?zooid=@context.ZooId">@context.ZooName</a>
+    <GridColumn TItem="Review" HeaderText="Zoo" PropertyName="ZooName" SortString="Zoo.Name" SortKeySelector="item => item.ZooName" FilterTextboxWidth="100">
+        <a href="/zoos/details?zooid=@context.ZooId" title="Go to zoo's page">@context.ZooName</a>
     </GridColumn>
     <GridColumn TItem="Review" HeaderText="Username" PropertyName="Username" SortString="Username" SortKeySelector="item => item.Username" FilterTextboxWidth="80">
         @context.Username
     </GridColumn>
     <GridColumn TItem="Review" HeaderText="Rating" PropertyName="Rating" SortString="Rating" SortKeySelector="item => item.Rating" FilterTextboxWidth="50" TextAlignment="Alignment.Center">
-        @context.Rating
+        @RenderStars(context.Rating)
     </GridColumn>
-    <GridColumn TItem="Review" HeaderText="Comment" PropertyName="Comment" SortString="Comment" SortKeySelector="item => item.Content" FilterTextboxWidth="150">
-        <a href="/reviews/details?reviewid=@context.ReviewId">@TruncateComment(context.Content)</a>
+    <GridColumn TItem="Review" HeaderText="Comment" PropertyName="Comment" SortString="Content" SortKeySelector="item => item.Content!" FilterTextboxWidth="150">
+        <a href="/reviews/details?reviewid=@context.ReviewId" title="Go to details">@TruncateComment(context.Content!)</a>
     </GridColumn>
 
     <GridColumn TItem="Review" HeaderText="Date Reviewed" PropertyName="DateReviewed" SortString="DateReviewed" SortKeySelector="item => item.DateReviewed" FilterTextboxWidth="150">
@@ -40,35 +41,29 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var dbContext = await DbFactory.CreateDbContextAsync();
-        _reviewsQuery = dbContext.Reviews.Include(r => r.Zoo).AsQueryable();
+        ApplicationDbContext dbContext = await DbFactory.CreateDbContextAsync();
+        _reviewsQuery = dbContext.Reviews
+            .Include(r => r.Zoo)
+            .OrderByDescending(r => r.DateReviewed)
+            .AsQueryable();
     }
 
     private async Task<GridDataProviderResult<Review>> CustomersDataProvider(GridDataProviderRequest<Review> request)
     {
-        // Handle sorting
-        var query = _reviewsQuery;
-        
-        if (request.Sorting is not null && request.Sorting.Any())
-        {
-            var sort = request.Sorting.First();
-            query = sort.SortDirection == SortDirection.Ascending
-                ? query.OrderBy(sort.SortKeySelector)
-                : query.OrderByDescending(sort.SortKeySelector);
-        }
+        IQueryable<Review> query = _reviewsQuery;
 
-        // Apply filters
-        if (request.Filters is not null && request.Filters.Any())
+        // Handle sorting
+        if (request.Sorting.Any())
         {
-            foreach (var filter in request.Filters)
-            {
-                // Apply your filtering logic here, possibly using a library like Linq.Dynamic.Core for dynamic filters
-            }
+            SortingItem<Review> sort = request.Sorting.First();
+            query = sort.SortDirection == SortDirection.Ascending
+                ? query.OrderBy(sort.SortString)
+                : query.OrderBy($"{sort.SortString} descending");
         }
 
         // Pagination
-        var totalItems = await query.CountAsync();
-        var data = await query
+        int totalItems = await query.CountAsync();
+        List<Review> data = await query
             .Skip((request.PageNumber - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync();
@@ -76,10 +71,26 @@
         return new GridDataProviderResult<Review> { Data = data, TotalCount = totalItems };
     }
     
-    private string TruncateComment(string comment)
+    private static string RenderStars(double avgRating)
+    {
+        int fullStars = (int)avgRating;
+        bool halfStar = avgRating - fullStars >= 0.5;
+        int emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+        string starsHtml = new string('★', fullStars);
+        if (halfStar) starsHtml += "☆";
+        starsHtml += new string('☆', emptyStars);
+
+        return starsHtml;
+    }
+
+    private static string TruncateComment(string comment)
     {
         if (string.IsNullOrEmpty(comment)) return string.Empty;
 
         return comment.Length > 150 ? comment.Substring(0, 150) + "..." : comment;
     }
 }
+<style>
+    a {color: #000000}
+</style>

@@ -55,7 +55,7 @@ else
     private Guid ReviewId { get; set; }
 
     private Review? Review { get; set; }
-    private bool isCurrentUserReview = false;
+    private bool _isCurrentUserReview;
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,9 +83,9 @@ else
             if (appUser != null)
             {
                 // Check if the logged-in user is the same as the one who created the review
-                isCurrentUserReview = Review.Username == appUser.UserName;
+                _isCurrentUserReview = Review!.Username == appUser.UserName;
 
-                if (!isCurrentUserReview)
+                if (!_isCurrentUserReview)
                 {
                     // If the logged-in user is not the one who created the review, redirect to "notfound"
                     NavigationManager.NavigateTo("Account/InvalidUser");

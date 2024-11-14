@@ -15,52 +15,52 @@
 <div>
     <h2>Zoo</h2>
     <hr />
-    @if (zoo is null)
+    @if (_zoo is null)
     {
     <p><em>Loading...</em></p>
     }
     else {
     <dl class="row">
         <dt class="col-sm-2">Name</dt>
-        <dd class="col-sm-10">@zoo.Name</dd>
+        <dd class="col-sm-10">@_zoo.Name</dd>
     </dl>
     <dl class="row">
         <dt class="col-sm-2">Town</dt>
-        <dd class="col-sm-10">@zoo.Town</dd>
+        <dd class="col-sm-10">@_zoo.Town</dd>
     </dl>
     <dl class="row">
         <dt class="col-sm-2">AvgRating</dt>
-        <dd class="col-sm-10">@zoo.AvgRating</dd>
+        <dd class="col-sm-10">@_zoo.AvgRating</dd>
     </dl>
-    <EditForm method="post" Model="zoo" OnValidSubmit="DeleteZoo" FormName="delete" Enhance>
-        <button type="submit" class="btn btn-danger" disabled="@(zoo is null)">Delete</button> |
+    <EditForm method="post" Model="_zoo" OnValidSubmit="DeleteZoo" FormName="delete" Enhance>
+        <button type="submit" class="btn btn-danger" disabled="@(_zoo is null)">Delete</button> |
         <a href="/zoos">Back to List</a>
     </EditForm>
     }
 </div>
 
 @code {
-private Zoo? zoo;
+    private Zoo? _zoo;
 
-[SupplyParameterFromQuery]
-private Guid ZooId { get; set; }
+    [SupplyParameterFromQuery]
+    private Guid ZooId { get; set; }
 
-protected override async Task OnInitializedAsync()
-{
-using var context = DbFactory.CreateDbContext();
-zoo = await context.Zoos.FirstOrDefaultAsync(m => m.ZooId == ZooId);
+    protected override async Task OnInitializedAsync()
+    {
+        await using ApplicationDbContext context = DbFactory.CreateDbContext();
+        _zoo = await context.Zoos.FirstOrDefaultAsync(m => m.ZooId == ZooId);
 
-if (zoo is null)
-{
-NavigationManager.NavigateTo("notfound");
-}
-}
+        if (_zoo is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
 
-private async Task DeleteZoo()
-{
-using var context = DbFactory.CreateDbContext();
-context.Zoos.Remove(zoo!);
-await context.SaveChangesAsync();
-NavigationManager.NavigateTo("/zoos");
-}
+    private async Task DeleteZoo()
+    {
+        await using ApplicationDbContext context = DbFactory.CreateDbContext();
+        context.Zoos.Remove(_zoo!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/zoos");
+    }
 }

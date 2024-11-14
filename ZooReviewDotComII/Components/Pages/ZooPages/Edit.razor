@@ -60,12 +60,12 @@ else
     
     private void NavigateToDeletePage()
     {
-        NavigationManager.NavigateTo($"/zoos/delete?ZooId={Zoo.ZooId}");
+        NavigationManager.NavigateTo($"/zoos/delete?ZooId={Zoo!.ZooId}");
     }
 
     protected override async Task OnInitializedAsync()
     {
-        using var context = DbFactory.CreateDbContext();
+        await using ApplicationDbContext context = await DbFactory.CreateDbContextAsync();
         Zoo ??= await context.Zoos.FirstOrDefaultAsync(m => m.ZooId == ZooId);
 
         if (Zoo is null)
@@ -74,38 +74,33 @@ else
         }
     }
     
-    private byte[]? uploadedImageData;
+    private byte[]? _uploadedImageData;
 
     private async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
-        var file = e.File;
+        IBrowserFile file = e.File;
         const long maxFileSize = 10 * 1024 * 1024; // 10 MB
 
-        if (file != null && file.Size <= maxFileSize)
+        if (file is { Size: <= maxFileSize })
         {
-            using var memoryStream = new MemoryStream();
+            using MemoryStream memoryStream = new();
             await file.OpenReadStream(maxFileSize).CopyToAsync(memoryStream);
-            uploadedImageData = memoryStream.ToArray();
+            _uploadedImageData = memoryStream.ToArray();
         }
         else
         {
             Console.WriteLine("File size exceeds the 10 MB limit.");
         }
     }
-
-
-
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    
     private async Task UpdateZoo()
     {
-        
-        using var context = DbFactory.CreateDbContext();
+        await using ApplicationDbContext context = await DbFactory.CreateDbContextAsync();
         if (Zoo != null)
         {
-            if (uploadedImageData != null)
+            if (_uploadedImageData != null)
             {
-                Zoo.Image = uploadedImageData;
+                Zoo.Image = _uploadedImageData;
             }
             context.Attach(Zoo!).State = EntityState.Modified;
 
@@ -131,7 +126,7 @@ else
 
     private bool ZooExists(Guid zooid)
     {
-        using var context = DbFactory.CreateDbContext();
+        using ApplicationDbContext context = DbFactory.CreateDbContext();
         return context.Zoos.Any(e => e.ZooId == zooid);
     }
 }

@@ -20,10 +20,10 @@
     {
         <CarouselItem Active="@(Zoos.IndexOf(zoo) == 0)">
             <div style="display: flex; justify-content: center;">
-                <img src="data:image/jpeg;base64,@Convert.ToBase64String(zoo.Image)" style="max-width: 700px; object-fit: cover; display: block; margin: 0 auto;" />
+                <img src="data:image/jpeg;base64,@Convert.ToBase64String(zoo.Image!)" style="max-width: 770px; object-fit: cover; display: block; margin: 0 auto;" alt="Zoo"/>
             </div>
             <CarouselCaption Style="text-align: center; vertical-align: text-bottom">
-                <h4><a href="@($"/zoos/details?zooid={zoo.ZooId}")" style="color: white;">@zoo.Name</a></h4>
+                <h2><a href="@($"/zoos/details?zooid={zoo.ZooId}")" style="color: white; text-decoration: none; font-style: italic; font-weight: lighter;">@zoo.Name</a></h2>
             </CarouselCaption>
         </CarouselItem>
     }
@@ -74,23 +74,24 @@
 <br/><br/>
 
 @code {
-private string _markdownContent = "";
-private List<Zoo> Zoos { get; set; } = new();
+    private string _markdownContent = "";
+    private List<Zoo> Zoos { get; set; } = [];
 
-protected override async Task OnInitializedAsync()
-{
-Zoos = await ZooService.GetZoosAsync();  // Fetch zoos from database
+    protected override async Task OnInitializedAsync()
+    {
+    Zoos = await ZooService.GetZoosAsync();
 
-var filePath = Path.Combine(Env.ContentRootPath, "README.md");
-_markdownContent = File.Exists(filePath)
-? Markdown.ToHtml(await File.ReadAllTextAsync(filePath), new MarkdownPipelineBuilder().UseAdvancedExtensions().Build())
-: "<p><em>README.md file not found.</em></p>";
+    string filePath = Path.Combine(Env.ContentRootPath, "README.md");
+    _markdownContent = File.Exists(filePath)
+        ? Markdown.ToHtml(await File.ReadAllTextAsync(filePath), 
+            new MarkdownPipelineBuilder().UseAdvancedExtensions().Build())
+        : "<p><em>README.md file not found.</em></p>";
+    }
 }
-}
+
 <style>
     .code-block {
-        height: min(400px);
-        width: max(800px);
+        width: max(770px);
         
         border: 1px solid #ddd;
         border-radius: 6px;

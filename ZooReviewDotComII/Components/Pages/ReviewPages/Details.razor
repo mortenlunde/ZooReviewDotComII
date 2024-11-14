@@ -1,4 +1,5 @@
 ﻿@page "/reviews/details"
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using ZooReviewDotComII.Models
@@ -15,7 +16,7 @@
 <div>
     <h2>Review</h2>
     <hr />
-    @if (review is null)
+    @if (_review is null)
     {
     <p><em>Loading...</em></p>
     }
@@ -23,26 +24,26 @@
     {
     <dl class="row">
         <dt class="col-sm-2">UserId</dt>
-        <dd class="col-sm-10">@review.Username</dd>
+        <dd class="col-sm-10">@_review.Username</dd>
         <dt class="col-sm-2">Rating</dt>
-        <dd class="col-sm-10">@review.Rating</dd>
+        <dd class="col-sm-10">@RenderStars(_review.Rating)</dd>
         <dt class="col-sm-2">Content</dt>
-        <dd class="col-sm-10">@review.Content</dd>
+        <dd class="col-sm-10">@_review.Content</dd>
         <dt class="col-sm-2">DateReviewed</dt>
-        <dd class="col-sm-10">@review.DateReviewed</dd>
+        <dd class="col-sm-10">@_review.DateReviewed</dd>
     </dl>
 
     <div>
         <!-- Edit Button (Only for the User who created the review) -->
-        @if (isCurrentUserReview)
+        @if (_isCurrentUserReview)
         {
-        <a href="@($"/reviews/edit?reviewid={review.ReviewId}")" class="btn btn-success mx-2">Edit</a>
+        <a href="@($"/reviews/edit?reviewid={_review.ReviewId}")" class="btn btn-success mx-2">Edit</a>
         }
 
         <!-- Delete Button (Only for Admin users) -->
-        @if (isAdmin || isCurrentUserReview)
+        @if (_isAdmin || _isCurrentUserReview)
         {
-        <a href="@($"/reviews/delete?reviewid={review.ReviewId}")" class="btn btn-danger mx-2">Delete</a>
+        <a href="@($"/reviews/delete?reviewid={_review.ReviewId}")" class="btn btn-danger mx-2">Delete</a>
         }
 
         <!-- Back to List Button -->
@@ -52,43 +53,56 @@
 </div>
 
 @code {
-private Review? review;
-private bool isCurrentUserReview = false;
-private bool isAdmin = false;
+    private Review? _review;
+    private bool _isCurrentUserReview;
+    private bool _isAdmin;
 
-[SupplyParameterFromQuery]
-private Guid ReviewId { get; set; }
+    [SupplyParameterFromQuery]
+    private Guid ReviewId { get; set; }
 
-protected override async Task OnInitializedAsync()
-{
-using var context = DbFactory.CreateDbContext();
-review = await context.Reviews.FirstOrDefaultAsync(m => m.ReviewId == ReviewId);
+    protected override async Task OnInitializedAsync()
+    {
+        await using ApplicationDbContext context = await DbFactory.CreateDbContextAsync();
+        _review = await context.Reviews.FirstOrDefaultAsync(m => m.ReviewId == ReviewId);
 
-if (review is null)
-{
-NavigationManager.NavigateTo("notfound");
-return;
-}
+        if (_review is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
 
-await CheckUserPermissions();
-}
+        await CheckUserPermissions();
+    }
+    
+    private static string RenderStars(double avgRating)
+    {
+        int fullStars = (int)avgRating;
+        bool halfStar = avgRating - fullStars >= 0.5;
+        int emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
 
-private async Task CheckUserPermissions()
-{
-var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-var user = authState.User;
+        string starsHtml = new string('★', fullStars);
+        if (halfStar) starsHtml += "☆";
+        starsHtml += new string('☆', emptyStars);
 
-if (user.Identity?.IsAuthenticated ?? false)
-{
-var appUser = await UserManager.GetUserAsync(user);
-if (appUser != null)
-{
-// Check if the logged-in user is the one who created the review
-isCurrentUserReview = review.Username == appUser.UserName;
+        return starsHtml;
+    }
 
-// Check if the user is an Admin
-isAdmin = await UserManager.IsInRoleAsync(appUser, "Admin");
-}
-}
-}
+    private async Task CheckUserPermissions()
+    {
+        AuthenticationState authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        ClaimsPrincipal user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            ApplicationUser? appUser = await UserManager.GetUserAsync(user);
+            if (appUser != null)
+            {
+                // Check if the logged-in user is the one who created the review
+                _isCurrentUserReview = _review?.Username == appUser.UserName;
+
+                // Check if the user is an Admin
+                _isAdmin = await UserManager.IsInRoleAsync(appUser, "Admin");
+            }
+        }
+    }
 }

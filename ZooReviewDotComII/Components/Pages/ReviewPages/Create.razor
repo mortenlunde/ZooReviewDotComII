@@ -1,13 +1,11 @@
 ﻿@page "/reviews/create"
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using ZooReviewDotComII.Data
 @using ZooReviewDotComII.Models
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
-@inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Create Review</PageTitle>

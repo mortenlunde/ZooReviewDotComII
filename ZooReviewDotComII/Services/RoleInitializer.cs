@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Identity;
-
 namespace ZooReviewDotComII.Services;
 
 public class RoleInitializer

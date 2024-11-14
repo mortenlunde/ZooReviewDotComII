@@ -46,31 +46,29 @@
     [SupplyParameterFromForm]
     private Zoo Zoo { get; set; } = new();
     
-    private byte[]? uploadedImageData;
+    private byte[]? _uploadedImageData;
 
     private async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
         var file = e.File;
         const long maxFileSize = 10 * 1024 * 1024; // 10 MB
 
-        if (file != null && file.Size <= maxFileSize)
+        if (file is { Size: <= maxFileSize })
         {
             using var memoryStream = new MemoryStream();
             await file.OpenReadStream(maxFileSize).CopyToAsync(memoryStream);
-            uploadedImageData = memoryStream.ToArray();
+            _uploadedImageData = memoryStream.ToArray();
         }
         else
         {
             Console.WriteLine("File size exceeds the 10 MB limit.");
         }
     }
-
-
-
+    
     private async Task AddZoo()
     {
-        using var context = DbFactory.CreateDbContext();
-        Zoo.Image = uploadedImageData;
+        await using ApplicationDbContext context = DbFactory.CreateDbContext();
+        Zoo.Image = _uploadedImageData;
         context.Zoos.Add(Zoo);
         await context.SaveChangesAsync();
         NavigationManager.NavigateTo("/zoos");
