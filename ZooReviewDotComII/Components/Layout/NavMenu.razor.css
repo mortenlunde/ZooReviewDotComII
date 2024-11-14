@@ -1,0 +1,36 @@
+.bubbles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.bubbles:before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100px;
+    height: 100px;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    animation: bubble-animation 3s infinite;
+}
+
+@keyframes bubble-animation {
+    0% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.5) translateY(-100px);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}

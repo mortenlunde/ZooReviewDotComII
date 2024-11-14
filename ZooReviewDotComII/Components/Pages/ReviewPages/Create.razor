@@ -105,7 +105,7 @@ private async Task AddReview()
     await using ApplicationDbContext context = await DbFactory.CreateDbContextAsync();
 
     // Set DateReviewed to current UTC time
-    Review.DateReviewed = DateTime.UtcNow.AddHours(1);
+    Review.DateReviewed = DateTime.UtcNow;
 
     // Set the UserId of the review to the current logged-in user's name (or ID if needed)
     Review.Username = CurrentUsername;

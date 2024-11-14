@@ -1,6 +1,12 @@
 ﻿@inherits LayoutComponentBase
 
-<NavMenu />
-<main class="container">
-    @Body
+<!-- Background Bubbles -->
+<div class="bubbles"></div>
+
+<main class="main-layout" style="background-image: linear-gradient(to right, #c6ffdd, #fbd786, #f7797d);
+">
+    <NavMenu />
+    <div class="container" style="padding: 20px;">
+        @Body
+    </div>
 </main>

@@ -29,7 +29,7 @@
                 <ValidationMessage For="() => Zoo.Town" class="text-danger" /> 
             </div>
             <div class="mb-3">
-                <label for="image" class="form-label">Upload Picture:</label>
+                <label for="image" class="form-label">Upload Picture (max 10mb):</label>
                 <InputFile id="image" OnChange="OnInputFileChange" />
                 <ValidationMessage For="() => Zoo.Image" class="text-danger" />
             </div>
@@ -51,13 +51,21 @@
     private async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
         var file = e.File;
-        if (file != null)
+        const long maxFileSize = 10 * 1024 * 1024; // 10 MB
+
+        if (file != null && file.Size <= maxFileSize)
         {
             using var memoryStream = new MemoryStream();
-            await file.OpenReadStream().CopyToAsync(memoryStream);
+            await file.OpenReadStream(maxFileSize).CopyToAsync(memoryStream);
             uploadedImageData = memoryStream.ToArray();
         }
+        else
+        {
+            Console.WriteLine("File size exceeds the 10 MB limit.");
+        }
     }
+
+
 
     private async Task AddZoo()
     {

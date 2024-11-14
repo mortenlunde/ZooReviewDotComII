@@ -2,149 +2,84 @@
 @attribute [AllowAnonymous]
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
-@using Microsoft.AspNetCore.Components.QuickGrid
 @using ZooReviewDotComII.Models
 @using ZooReviewDotComII.Data
-@implements IAsyncDisposable
+@using SortDirection = BlazorBootstrap.SortDirection
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
-
-<PageTitle>Index</PageTitle>
 
 <h1>Reviews</h1>
 <br/>
-<div>
-    <label for="pageSize">Reviews per page: </label>
-    <select id="pageSize" @onchange="OnPageSizeChanged" value="@_pageSize">
-        <option value="5">5</option>
-        <option value="25">25</option>
-        <option value="50">50</option>
-    </select>
-    <text> | </text>
-    <label for="sortBy">Sort By: </label>
-    <select id="sortBy" @onchange="OnSortChanged">
-        <option value="DateReviewed-true" selected>Date Reviewed (Ascending)</option>
-        <option value="DateReviewed-false">Date Reviewed (Descending)</option>
-        <option value="ZooName-true">Zoo Name (Ascending)</option>
-        <option value="ZooName-false">Zoo Name (Descending)</option>
-        <option value="Username-true">Username (Ascending)</option>
-        <option value="Username-false">Username (Descending)</option>
-        <option value="Rating-true">Rating (Ascending)</option>
-        <option value="Rating-false">Rating (Descending)</option>
-    </select>
-</div>
-<br/>
-<QuickGrid Class="table" Items="_reviewsQuery">
-    <PropertyColumn Property="review => review.ZooName" />
-    <PropertyColumn Property="review => review.Username" />
-    <PropertyColumn Property="review => review.Rating" />
-    <PropertyColumn Property="review => Truncate(review.Content, 100)" Title="Comment"/>  <!-- Truncate content to 100 characters -->
-    <PropertyColumn Property="review => review.DateReviewed" />
-    <TemplateColumn Context="review">
-        <a href="@($"reviews/details?reviewid={review.ReviewId}")">Details</a>
-    </TemplateColumn>
-</QuickGrid>
+<Grid TItem="Review"
+      Class="table table-hover table-bordered table-striped"
+      DataProvider="CustomersDataProvider"
+      AllowPaging="true"
+      AllowSorting="true"
+      Responsive="true"
+      Style="background: rgba(255,255,255,0.5)">
 
-<div class="mb-3">
-    <button class="btn btn-primary mx-2" @onclick="GoToPreviousPage" disabled="@(!CanGoToPreviousPage)">
-        <i class="bi bi-arrow-left-circle"></i> Previous
-    </button>
-    <span class="align-self-center">Page @_currentPage of @_totalPages</span>
-    <button class="btn btn-primary mx-2" @onclick="GoToNextPage" disabled="@(!CanGoToNextPage)">
-        Next <i class="bi bi-arrow-right-circle"></i>
-    </button>
-</div>
+    <GridColumn TItem="Review" HeaderText="Zoo Name" PropertyName="ZooName" SortString="ZooName" SortKeySelector="item => item.ZooName" FilterTextboxWidth="100">
+        <a href="/zoos/details?zooid=@context.ZooId">@context.ZooName</a>
+    </GridColumn>
+    <GridColumn TItem="Review" HeaderText="Username" PropertyName="Username" SortString="Username" SortKeySelector="item => item.Username" FilterTextboxWidth="80">
+        @context.Username
+    </GridColumn>
+    <GridColumn TItem="Review" HeaderText="Rating" PropertyName="Rating" SortString="Rating" SortKeySelector="item => item.Rating" FilterTextboxWidth="50" TextAlignment="Alignment.Center">
+        @context.Rating
+    </GridColumn>
+    <GridColumn TItem="Review" HeaderText="Comment" PropertyName="Comment" SortString="Comment" SortKeySelector="item => item.Content" FilterTextboxWidth="150">
+        <a href="/reviews/details?reviewid=@context.ReviewId">@TruncateComment(context.Content)</a>
+    </GridColumn>
+
+    <GridColumn TItem="Review" HeaderText="Date Reviewed" PropertyName="DateReviewed" SortString="DateReviewed" SortKeySelector="item => item.DateReviewed" FilterTextboxWidth="150">
+        @context.DateReviewed
+    </GridColumn>
+</Grid>
 
 @code {
-    private ApplicationDbContext _context = default!;
     private IQueryable<Review> _reviewsQuery = default!;
-
-    private int _pageSize = 5;
-    private int _currentPage = 1;
-    private int _totalPages = 1;
-    private string _sortColumn = "DateReviewed";  // Default column for sorting (DateReviewed)
-    private bool _sortDescending = true; // Default sort order (Ascending = true)
 
     protected override async Task OnInitializedAsync()
     {
-        _context = await DbFactory.CreateDbContextAsync();
-        await LoadReviews();
+        var dbContext = await DbFactory.CreateDbContextAsync();
+        _reviewsQuery = dbContext.Reviews.Include(r => r.Zoo).AsQueryable();
     }
 
-    // Method to handle page size change
-    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    private async Task<GridDataProviderResult<Review>> CustomersDataProvider(GridDataProviderRequest<Review> request)
     {
-        _pageSize = int.Parse(e.Value!.ToString()!);
-        _currentPage = 1; // Reset to the first page when the page size changes
-        await LoadReviews();
-    }
-
-    // Method to handle sorting (column and order)
-    private async Task OnSortChanged(ChangeEventArgs e)
-    {
-        string value = e.Value!.ToString()!;
-        string[] parts = value.Split('-');
-        _sortColumn = parts[0];
-        _sortDescending = bool.Parse(parts[1]);
-        await LoadReviews();
-    }
-
-    // Method to load reviews with pagination and sorting
-    private async Task LoadReviews()
-    {
-        int totalReviews = await _context.Reviews.CountAsync();
-        _totalPages = (int)Math.Ceiling(totalReviews / (double)_pageSize);
-
-        // Apply sorting
-        IQueryable<Review> query = _context.Reviews.Include(r => r.Zoo).AsQueryable();
-
-        // Apply dynamic sorting based on the selected column and order
-        query = _sortColumn switch
+        // Handle sorting
+        var query = _reviewsQuery;
+        
+        if (request.Sorting is not null && request.Sorting.Any())
         {
-            "ZooName" => _sortDescending ? query.OrderByDescending(r => r.Zoo!.Name) : query.OrderBy(r => r.Zoo!.Name),
-            "Username" => _sortDescending ? query.OrderByDescending(r => r.Username) : query.OrderBy(r => r.Username),
-            "Rating" => _sortDescending ? query.OrderByDescending(r => r.Rating) : query.OrderBy(r => r.Rating),
-            "DateReviewed" => _sortDescending ? query.OrderByDescending(r => r.DateReviewed) : query.OrderBy(r => r.DateReviewed),
-            _ => query.OrderByDescending(r => r.DateReviewed) // Default fallback to DateReviewed descending
-        };
-
-        // Apply pagination (Skip and Take)
-        _reviewsQuery = query.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
-
-        StateHasChanged(); // Ensure the component is re-rendered after data load
-    }
-
-    // Truncate long descriptions
-    private string? Truncate(string? content, int maxLength)
-    {
-        if (string.IsNullOrEmpty(content)) return content;
-        return content.Length <= maxLength ? content : content.Substring(0, maxLength) + "...";
-    }
-
-    // Go to the previous page
-    private async Task GoToPreviousPage()
-    {
-        if (_currentPage > 1)
-        {
-            _currentPage--;
-            await LoadReviews();
+            var sort = request.Sorting.First();
+            query = sort.SortDirection == SortDirection.Ascending
+                ? query.OrderBy(sort.SortKeySelector)
+                : query.OrderByDescending(sort.SortKeySelector);
         }
-    }
 
-    // Go to the next page
-    private async Task GoToNextPage()
-    {
-        if (_currentPage < _totalPages)
+        // Apply filters
+        if (request.Filters is not null && request.Filters.Any())
         {
-            _currentPage++;
-            await LoadReviews();
+            foreach (var filter in request.Filters)
+            {
+                // Apply your filtering logic here, possibly using a library like Linq.Dynamic.Core for dynamic filters
+            }
         }
+
+        // Pagination
+        var totalItems = await query.CountAsync();
+        var data = await query
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+
+        return new GridDataProviderResult<Review> { Data = data, TotalCount = totalItems };
     }
+    
+    private string TruncateComment(string comment)
+    {
+        if (string.IsNullOrEmpty(comment)) return string.Empty;
 
-    // Check if we can go to the previous page
-    private bool CanGoToPreviousPage => _currentPage > 1;
-
-    // Check if we can go to the next page
-    private bool CanGoToNextPage => _currentPage < _totalPages;
-
-    public async ValueTask DisposeAsync() => await _context.DisposeAsync();
+        return comment.Length > 150 ? comment.Substring(0, 150) + "..." : comment;
+    }
 }

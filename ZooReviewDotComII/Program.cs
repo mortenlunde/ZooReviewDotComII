@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using ZooReviewDotComII.Components;
 using ZooReviewDotComII.Components.Account;
@@ -35,6 +37,22 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddDefaultTokenProviders();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10 * 6000 * 3000; // 10 MB
+});
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
+});
+
+builder.Services.Configure<KestrelServerOptions>(options =>
+{
+    options.Limits.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
+});
+
+
 
 var app = builder.Build();
 

@@ -46,7 +46,7 @@
                 <dt class="col-sm-3">Town</dt>
                 <dd class="col-sm-9">@zoo.Town</dd>
                 <dt class="col-sm-3">Avg Rating</dt>
-                <dd class="col-sm-9">@zoo.AvgRating</dd>
+                <dd class="col-sm-9">@RenderStars(zoo.AvgRating)</dd>
             </dl>
             <div>
                 @if (isAdmin)
@@ -145,6 +145,19 @@ else
 // Otherwise, expand it
 expandedReviews.Add(review.ReviewId.ToString());
 }
+}
+
+private string RenderStars(double avgRating)
+{
+    int fullStars = (int)avgRating; // Number of full stars
+    bool halfStar = avgRating - fullStars >= 0.5; // Determine if a half star is needed
+    int emptyStars = 5 - fullStars - (halfStar ? 1 : 0); // Calculate remaining empty stars
+
+    string starsHtml = new string('★', fullStars); // Full stars
+    if (halfStar) starsHtml += "☆"; // Half star, if needed
+    starsHtml += new string('☆', emptyStars); // Empty stars
+
+    return starsHtml;
 }
 
 private async Task CheckIfUserIsAdminAsync()

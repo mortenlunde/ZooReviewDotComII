@@ -35,6 +35,11 @@ else
                     <InputText id="town" @bind-Value="Zoo.Town" class="form-control" />
                     <ValidationMessage For="() => Zoo.Town" class="text-danger" />
                 </div>
+                <div class="mb-3">
+                    <label for="image" class="form-label">Upload Picture (max 10mb):</label>
+                    <InputFile id="image" OnChange="OnInputFileChange" />
+                    <ValidationMessage For="() => Zoo.Image" class="text-danger" />
+                </div>
                 <button type="button" class="btn btn-danger" @onclick="NavigateToDeletePage">Delete Zoo</button>
                 <button type="submit" class="btn btn-primary">Save</button>
             </EditForm>
@@ -68,27 +73,56 @@ else
             NavigationManager.NavigateTo("notfound");
         }
     }
+    
+    private byte[]? uploadedImageData;
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        const long maxFileSize = 10 * 1024 * 1024; // 10 MB
+
+        if (file != null && file.Size <= maxFileSize)
+        {
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(maxFileSize).CopyToAsync(memoryStream);
+            uploadedImageData = memoryStream.ToArray();
+        }
+        else
+        {
+            Console.WriteLine("File size exceeds the 10 MB limit.");
+        }
+    }
+
+
 
     // To protect from overposting attacks, enable the specific properties you want to bind to.
     // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task UpdateZoo()
     {
+        
         using var context = DbFactory.CreateDbContext();
-        context.Attach(Zoo!).State = EntityState.Modified;
-
-        try
+        if (Zoo != null)
         {
-            await context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!ZooExists(Zoo!.ZooId))
+            if (uploadedImageData != null)
             {
-                NavigationManager.NavigateTo("notfound");
+                Zoo.Image = uploadedImageData;
             }
-            else
+            context.Attach(Zoo!).State = EntityState.Modified;
+
+            try
             {
-                throw;
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ZooExists(Zoo!.ZooId))
+                {
+                    NavigationManager.NavigateTo("notfound");
+                }
+                else
+                {
+                    throw;
+                }
             }
         }
 
