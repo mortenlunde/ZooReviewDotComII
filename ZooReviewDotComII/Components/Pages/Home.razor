@@ -81,7 +81,8 @@
     {
     Zoos = await ZooService.GetZoosAsync();
 
-    string filePath = Path.Combine(Env.ContentRootPath, "README.md");
+    string filePath = Path.Combine("..", "README.md");
+
     _markdownContent = File.Exists(filePath)
         ? Markdown.ToHtml(await File.ReadAllTextAsync(filePath), 
             new MarkdownPipelineBuilder().UseAdvancedExtensions().Build())
