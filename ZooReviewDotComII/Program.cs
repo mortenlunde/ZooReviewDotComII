@@ -8,11 +8,10 @@ using ZooReviewDotComII.Components.Account;
 using ZooReviewDotComII.Data;
 using ZooReviewDotComII.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddBlazorBootstrap();
 builder.Services.AddScoped<ZooService>();
 
@@ -39,27 +38,15 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
-builder.Services.Configure<FormOptions>(options =>
+builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 10 * 6000 * 3000);
+builder.Services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = 50 * 1024 * 1024);
+builder.Services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 50 * 1024 * 1024);
+
+WebApplication app = builder.Build();
+
+using (IServiceScope scope = app.Services.CreateScope())
 {
-    options.MultipartBodyLengthLimit = 10 * 6000 * 3000; // 10 MB
-});
-builder.Services.Configure<IISServerOptions>(options =>
-{
-    options.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
-});
-
-builder.Services.Configure<KestrelServerOptions>(options =>
-{
-    options.Limits.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
-});
-
-
-
-var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
-{
-    var roleInitializer = scope.ServiceProvider.GetRequiredService<RoleInitializer>();
+    RoleInitializer roleInitializer = scope.ServiceProvider.GetRequiredService<RoleInitializer>();
     await roleInitializer.InitializeAsync();
 }
 
@@ -76,13 +63,11 @@ else
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+app.MapStaticAssets();
 app.UseAntiforgery();
 
+app.MapAdditionalIdentityEndpoints();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-// Add additional endpoints required by the Identity /Account Razor components.
-app.MapAdditionalIdentityEndpoints();
 
 app.Run();

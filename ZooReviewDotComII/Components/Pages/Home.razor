@@ -6,7 +6,6 @@
 @using ZooReviewDotComII.Services
 @using Markdown = Markdig.Markdown
 @inject ZooService ZooService
-@inject IWebHostEnvironment Env
 
 <PageTitle>Welcome</PageTitle>
 
@@ -16,7 +15,7 @@
 <!-- Carousel Section -->
 <div style="display: flex; justify-content: flex-start;">
 <Carousel Autoplay="CarouselAutoPlay.StartOnPageLoad">
-    @foreach (var zoo in Zoos)
+    @foreach (Zoo zoo in Zoos)
     {
         <CarouselItem Active="@(Zoos.IndexOf(zoo) == 0)">
             <div style="display: flex; justify-content: center;">
